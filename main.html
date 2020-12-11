@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/4.0.5/redux.js"></script>
+</head>
+<body>
+    <div id="subject"></div>
+    <div id="toc"></div>
+    <div id="control"></div>
+    <div id="content"></div>
+    <script>
+
+function reducer(state, action) {
+    if(state === undefined)
+        return {
+            max_id: 2,
+            mode: 'read',
+            selected_id: 1,
+            contents: [
+                {id:1, title:'HTML', desc: '<h2>HTML</h2> HTML is...'},
+                {id:2, title:'CSS', desc: '<h2>CSS</h2> CSS is...'},
+            ]
+            
+        }
+    switch(action.type) {
+        case 'CHANGE':
+            return Object.assign({}, state, {mode:action.mode});
+        case 'SELECT':
+            return Object.assign({}, state, {mode:action.mode, selected_id:action.id});
+        case 'CREATE': {
+            let newMaxId = state.max_id+1;
+            let newContents = state.contents.concat();
+            newContents.push({
+                id: newMaxId,
+                title:action.title,
+                desc:action.desc
+            })
+            return Object.assign({}, state, {max_id: newMaxId, contents: newContents, mode: 'read'});
+        }
+        case 'DELETE': {
+            if(state.mode==='create')
+                return state;
+            
+            let newContents = state.contents.concat();
+            newContents.splice(newContents.findIndex((c) => c.id === state.selected_id), 1);
+
+            return Object.assign({}, state, {contents: newContents, selected_id: newContents[0].id});
+        }
+    }
+}
+let store = Redux.createStore(
+    reducer,
+    window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+);
+
+function subject(){
+    document.querySelector('#subject').innerHTML = `
+        <header>
+            <h1>WEB</h1>
+            Hello, WEB!
+        </header>
+    `
+}
+function toc() {
+    let liTags = "";
+    store.getState().contents.forEach((c) => {
+        liTags += `
+            <li><a onclick="
+                event.preventDefault()
+                store.dispatch({type:'SELECT', mode: 'read', id:${c.id}})
+            "
+            href="${c.id}">${c.title}</a></li>
+        `;
+    });
+    document.querySelector('#toc').innerHTML = `
+        <nav>
+            <ol>
+                ${liTags}
+            </ol>
+        </nav>
+    `;
+}
+function control() {
+    let tStore = store.getState();
+    if(tStore.mode === 'read') {
+        document.querySelector('#control').innerHTML = `
+            <ul>
+                <li><a onclick="
+                    event.preventDefault();
+                    store.dispatch({ type: 'CHANGE', mode: 'create' })
+                "
+                href="create">create</a></li>
+                <li><input type="button" value="delete" onclick="
+                    store.dispatch({ type: 'DELETE' })
+                "></li>
+            </ul>
+        `;
+    } else {
+        document.querySelector('#control').innerHTML = `
+            <ul>
+                <li><a onclick="
+                    event.preventDefault();
+                    store.dispatch({ type: 'CHANGE', mode: 'read' })
+                "
+                href="read">read</a></li>
+                <li><input type="button" value="delete" onclick="
+                    store.dispatch({ type: 'DELETE' })
+                "></li>
+            </ul>
+        `;
+    }
+    
+}
+function article() {
+    let tStore = store.getState();
+    if(tStore.mode === 'create') {
+        document.querySelector('#content').innerHTML = `
+            <article>
+                <form onsubmit="
+                event.preventDefault();
+                    var _title = this.title.value;
+                    var _desc = this.desc.value;
+                    store.dispatch({
+                        type: 'CREATE',
+                        title:_title,
+                        desc:_desc
+                    })
+                ">
+                    <p>
+                        <input type="text" name="title" placeholder="title">
+                    </p>
+                    <p>
+                        <textarea name="desc" placeholder="description"></textarea>
+                    </p>
+                    <p>
+                        <input type="submit">
+                    </p>
+                </form>
+            </article>
+        `;
+    } else {
+        let article = '';
+        article += tStore.contents[tStore.contents.findIndex((c) => c.id === tStore.selected_id)].desc;
+        document.querySelector('#content').innerHTML = `
+            <ariticle>
+                ${article}
+            </ariticle>
+        `;
+    }  
+}
+subject();
+toc();
+control();
+article();
+
+store.subscribe(toc);
+store.subscribe(control);
+store.subscribe(article);
+
+    </script>
+</body>
+</html>
